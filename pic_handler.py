@@ -9,15 +9,29 @@ from urllib.parse import urlparse, parse_qs
 from wand.color import Color
 from wand.drawing import Drawing
 from wand.image import Image
+from collections import deque
 
 from pics import rebuild_thread
 
 SCRIPT_PATH = dirname(realpath(__file__))
-
+HISTORY = None
 
 class MyHandler(http.server.SimpleHTTPRequestHandler):
     rebuilding = Semaphore()
     rbthread = None
+
+    def rebuild_history_deque(self):
+        global HISTORY
+        con = sqlite3.connect(DB_PATH)
+        c = con.cursor()
+        c.execute('SELECT client FROM config')
+        rows = c.fetchall()
+        HISTORY = {}
+        for row in rows:
+            HISTORY[row[0]] = deque(maxlen=10)
+
+        c.close()
+        con.close()
 
     @staticmethod
     def get_tagq(tags):
@@ -141,19 +155,6 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         cur.execute(query, params)
 
         return cur.fetchone()
-
-    @staticmethod
-    def do_add(params):
-        name = params['name'][0]
-        print ("adding {}".format(name))
-        con = sqlite3.connect(DB_PATH)
-        c = con.cursor()
-        c.execute(
-            'INSERT INTO config (client, file_title, tag_filter, rating, datesize, titlesize) VALUES (:name, 1, "*", ">0", 60, 40)',
-            {"name": name})
-        con.commit()
-        c.close()
-        con.close()
 
     @staticmethod
     def do_update(params):
@@ -437,6 +438,10 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             jpgimg.composite(image=text, left=left, top=top)
 
     def do_GET(self):
+        global HISTORY
+
+        if HISTORY is None:
+            self.rebuild_history_deque()
 
         # We don't need no favicon
         if self.path.startswith("/favicon"):
@@ -457,6 +462,9 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
         if self.path.startswith("/rebuild_db"):
             return self.do_rebuild_db(params)
+
+        if self.path.startswith("/history"):
+            return self.do_history(params)
 
         # Connect to pictures database
         con = sqlite3.connect(DB_PATH)
@@ -522,6 +530,8 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             desc = row[4]
             print ("{}:{}, {} views ({})".format(rowid, path, views, title))
 
+            HISTORY[client].appendleft(path)
+
             # Now that we have chosen a picture, update its view count in db.
             c.execute('UPDATE pics SET views=:views WHERE rowid=:rowid', {"views": views, "rowid": rowid})
             con.commit()
@@ -577,3 +587,37 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         # cleanup
         c.close()
         con.close()
+
+
+    def do_add(self, params):
+        name = params['name'][0]
+        print ("adding {}".format(name))
+        con = sqlite3.connect(DB_PATH)
+        c = con.cursor()
+        c.execute(
+            'INSERT INTO config (client, file_title, tag_filter, rating, datesize, titlesize) VALUES (:name, 1, "*", ">0", 60, 40)',
+            {"name": name})
+        con.commit()
+        c.close()
+        con.close()
+        self.rebuild_history_deque()
+
+    def do_history(self, params):
+        global HISTORY
+
+        mydeque = HISTORY[params['client'][0]]
+        if len(mydeque) == 0:
+            historylist = "No history"
+        else:
+
+            historylist = "<ol>"
+            for item in mydeque:
+                historylist += "<li>" + item + "</li>\n"
+            historylist += "</ol>"
+
+        self.send_response(200, 'OK')
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+        page = "<html>{}</html>".format(historylist)
+        self.wfile.write(page.encode('UTF-8'))
