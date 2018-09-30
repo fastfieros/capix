@@ -173,18 +173,20 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
         print ("updating {}".format(params['name'][0]))
         c.execute(
-            'UPDATE config SET file_title=:file_title, tag_filter=:tag_filter, rating=:rating, datesize=:datesize, titlesize=:titlesize, font=:font, fill_opacity=:fill_opacity, fill_color=:fill_color, stroke_opacity=:stroke_opacity, stroke_color=:stroke_color WHERE client=:name',
+            'UPDATE config SET file_title=:file_title, tag_filter=:tag_filter, rating=:rating, datesize=:datesize, titlesize=:titlesize, font=:font, fill_opacity=:fill_opacity, fill_color=:fill_color, fill_width=:fill_width, stroke_opacity=:stroke_opacity, stroke_color=:stroke_color, stroke_width=:stroke_width WHERE client=:name',
             {"file_title": params['file_title'][0],
              "tag_filter": params['tag_filter'][0],
              "rating": params['rating'][0],
              "datesize": params['datesize'][0],
              "titlesize": params['titlesize'][0],
              "name": params['name'][0],
-             "font": SCRIPT_PATH + "\\font\\" + params['font'][0],
+             "font": params['font'][0],
              "fill_opacity": params['fill_opacity'][0],
              "fill_color": params['fill_color'][0],
+             "fill_width": params['fill_width'][0],
              "stroke_opacity": params['stroke_opacity'][0],
              "stroke_color": params['stroke_color'][0],
+             "stroke_width": params['stroke_width'][0]
              })
         con.commit()
 
@@ -268,7 +270,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         con = sqlite3.connect(DB_PATH)
         c = con.cursor()
         c.execute(
-            'SELECT client, file_title, tag_filter, rating, datesize, titlesize, font, fill_opacity, fill_color, stroke_opacity, stroke_color FROM config')
+            'SELECT client, file_title, tag_filter, rating, datesize, titlesize, font, fill_opacity, fill_color, fill_width, stroke_opacity, stroke_color, stroke_width FROM config')
         rows = c.fetchall()
 
         for client in rows:
@@ -287,8 +289,10 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                         "Title font: {}<br>".format(self.get_font_select(client[6])) + \
                         "Title fill opacity: <input name='fill_opacity' value='{}'/><br>".format(client[7]) + \
                         "Title fill color: <input name='fill_color' value='{}'/><br>".format(client[8]) + \
-                        "Title stroke opacity: <input name='stroke_opacity' value='{}'/><br>".format(client[9]) + \
-                        "Title stroke color: <input name='stroke_color' value='{}'/><br>".format(client[10]) + \
+                        "Title fill width: <input name='fill_width' value='{}'/><br>".format(client[9]) + \
+                        "Title stroke opacity: <input name='stroke_opacity' value='{}'/><br>".format(client[10]) + \
+                        "Title stroke color: <input name='stroke_color' value='{}'/><br>".format(client[11]) + \
+                        "Title stroke width: <input name='stroke_width' value='{}'/><br>".format(client[12]) + \
                         "<input type='submit' value='Update'/></form>\n"
 
             if client[0] != "default":
@@ -352,8 +356,9 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         return
 
     @staticmethod
-    def draw_text(jpgimg, title, datesize, titlesize, font=SCRIPT_PATH + '/font/PoiretOne-Regular.ttf',
-                  fill_opacity=0.9, fill_color='white', stroke_opacity=0.2, stroke_color='black'):
+    def draw_text(jpgimg, title, datesize, titlesize, font,
+                  fill_opacity, fill_color, fill_width, stroke_opacity,
+                  stroke_color, stroke_width):
 
         left = 0
         right = jpgimg.width
@@ -373,13 +378,13 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         # Open draw api to write text onto canvas
         with Drawing() as draw:
 
-            draw.font = "C:\\Users\\danla\\Documents\\GitHub\\capix\\font\\PoiretOne-Regular.ttf" #font
+            draw.font = SCRIPT_PATH + "\\font\\" +  font
             draw.fill_color = Color(fill_color)
             draw.fill_opacity = float(fill_opacity)/100.0
-            draw.fill_width = 8
+            draw.fill_width = fill_width
             draw.stroke_color = Color(stroke_color)
             draw.stroke_opacity = float(stroke_opacity)/100.0
-            draw.stroke_width = 5
+            draw.stroke_width = stroke_width
             # draw.text_under_color = Color('#00000030')
 
             right_buf = 0
@@ -463,7 +468,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             client = params['name'][0]
 
         c.execute(
-            'SELECT file_title, tag_filter, rating, datesize, titlesize, font, fill_opacity, fill_color, stroke_opacity, stroke_color FROM config WHERE client=:client',
+            'SELECT file_title, tag_filter, rating, datesize, titlesize, font, fill_opacity, fill_color, fill_width, stroke_opacity, stroke_color, stroke_width FROM config WHERE client=:client',
             {"client": client})
         row = c.fetchone()
         if not row:
@@ -480,10 +485,13 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         font = row[5]
         fill_opacity = row[6]
         fill_color = row[7]
-        stroke_opacity = row[8]
-        stroke_color = row[9]
-        print("{}/{}/{}/{}/{}/{}/{}/{}/{}/{}".format(file_title, tagfilter, stars, datesize, titlesize, font,
-                                                     fill_opacity, fill_color, stroke_opacity, stroke_color))
+        fill_width = row[8]
+        stroke_opacity = row[9]
+        stroke_color = row[10]
+        stroke_width = row[11]
+        print("{}/{}/{}/{}/{}/{}/{}/{}/{}/{}/{}/{}".format(file_title, tagfilter, stars, datesize, titlesize, font,
+                                                     fill_opacity, fill_color, fill_width, stroke_opacity, stroke_color,
+                                                     stroke_width))
 
         # Get the list of matching pictures, just to find the minimum
         # view count. This query will return only a single value: the
@@ -552,8 +560,8 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 # Fit within box, maintain AR (aka 'fit'). add '>' to the end to avoid enlarging small pictures.
                 jpgimg.transform(resize="{:d}x{:d}".format(x, y))
 
-                self.draw_text(jpgimg, label, datesize, titlesize, font, fill_opacity, fill_color, stroke_opacity,
-                               stroke_color)
+                self.draw_text(jpgimg, label, datesize, titlesize, font, fill_opacity, fill_color, fill_width,
+                               stroke_opacity, stroke_color, stroke_width)
 
                 # Place jpgimage in center of canvas
                 img.composite(image=jpgimg, left=int((x - jpgimg.width) / 2), top=int((y - jpgimg.height) / 2))
