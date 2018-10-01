@@ -174,7 +174,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
         print ("updating {}".format(params['name'][0]))
         c.execute(
-            'UPDATE config SET file_title=:file_title, tag_filter=:tag_filter, rating=:rating, datesize=:datesize, titlesize=:titlesize, font=:font, fill_opacity=:fill_opacity, fill_color=:fill_color, fill_width=:fill_width, stroke_opacity=:stroke_opacity, stroke_color=:stroke_color, stroke_width=:stroke_width WHERE client=:name',
+            'UPDATE config SET file_title=:file_title, tag_filter=:tag_filter, rating=:rating, datesize=:datesize, titlesize=:titlesize, font=:font, fill_opacity=:fill_opacity, fill_color=:fill_color, text_under_color=:text_under_color, stroke_opacity=:stroke_opacity, stroke_color=:stroke_color, stroke_width=:stroke_width WHERE client=:name',
             {"file_title": params['file_title'][0],
              "tag_filter": params['tag_filter'][0],
              "rating": params['rating'][0],
@@ -184,7 +184,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
              "font": params['font'][0],
              "fill_opacity": params['fill_opacity'][0],
              "fill_color": params['fill_color'][0],
-             "fill_width": params['fill_width'][0],
+             "text_under_color": params['text_under_color'][0],
              "stroke_opacity": params['stroke_opacity'][0],
              "stroke_color": params['stroke_color'][0],
              "stroke_width": params['stroke_width'][0]
@@ -271,12 +271,12 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         con = sqlite3.connect(DB_PATH)
         c = con.cursor()
         c.execute(
-            'SELECT client, file_title, tag_filter, rating, datesize, titlesize, font, fill_opacity, fill_color, fill_width, stroke_opacity, stroke_color, stroke_width FROM config')
+            'SELECT client, file_title, tag_filter, rating, datesize, titlesize, font, fill_opacity, fill_color, text_under_color, stroke_opacity, stroke_color, stroke_width FROM config')
         rows = c.fetchall()
 
         for client in rows:
 
-            confpage += "<div style='border:1px solid #000;padding:5px;margin:5px;width:300px;'>\n"
+            confpage += "<div style='border:2px solid #888;padding:5px;margin:5px;width:400px;'>\n"
             confpage += "<form method='get' action='/config'>" + \
                         "<h3>{}</h3>".format(client[0]) + \
                         "<input type='hidden' name='update' value='1'\>" + \
@@ -287,13 +287,13 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                         "Stars (<, <=, >, >=, or csv): <input name='rating' value='{}'/><br>".format(client[3]) + \
                         "Date font size: <input name='datesize' value='{}'/><br>".format(client[4]) + \
                         "Title font size: <input name='titlesize' value='{}'/><br>".format(client[5]) + \
-                        "Title font: {}<br>".format(self.get_font_select(client[6])) + \
-                        "Title fill opacity: <input name='fill_opacity' value='{}'/><br>".format(client[7]) + \
-                        "Title fill color: <input name='fill_color' value='{}'/><br>".format(client[8]) + \
-                        "Title fill width: <input name='fill_width' value='{}'/><br>".format(client[9]) + \
-                        "Title stroke opacity: <input name='stroke_opacity' value='{}'/><br>".format(client[10]) + \
-                        "Title stroke color: <input name='stroke_color' value='{}'/><br>".format(client[11]) + \
-                        "Title stroke width: <input name='stroke_width' value='{}'/><br>".format(client[12]) + \
+                        "Font: {}<br>".format(self.get_font_select(client[6])) + \
+                        "Font fill opacity (0-100): <input name='fill_opacity' value='{}'/><br>".format(client[7]) + \
+                        "Font fill color: <input name='fill_color' value='{}'/><br>".format(client[8]) + \
+                        "Font Background color: <input name='text_under_color' value='{}'/><br>".format(client[9]) + \
+                        "Font stroke opacity (0-100): <input name='stroke_opacity' value='{}'/><br>".format(client[10]) + \
+                        "Font stroke color: <input name='stroke_color' value='{}'/><br>".format(client[11]) + \
+                        "Font stroke width: <input name='stroke_width' value='{}'/><br>".format(client[12]) + \
                         "<input type='submit' value='Update'/></form>\n"
 
             if client[0] != "default":
@@ -302,7 +302,8 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                             "<input type='hidden' name='delete' value='1'\>" + \
                             "<input type='submit' value='Delete'/></form>\n"
 
-            confpage += "<a href='/auto?name={}'>Preview</a>\n".format(client[0])
+            confpage += "<a href='/?name={}'>Preview</a>\n".format(client[0])
+            confpage += "<a href='/history?client={}'>Recently Shown</a>\n".format(client[0])
             confpage += "</div>\n"
 
         confpage += "<hr><div><form method='get' action='/config'>" + \
@@ -358,7 +359,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
     @staticmethod
     def draw_text(jpgimg, title, datesize, titlesize, font,
-                  fill_opacity, fill_color, fill_width, stroke_opacity,
+                  fill_opacity, fill_color, text_under_color, stroke_opacity,
                   stroke_color, stroke_width):
 
         left = 0
@@ -382,11 +383,12 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             draw.font = SCRIPT_PATH + "\\font\\" +  font
             draw.fill_color = Color(fill_color)
             draw.fill_opacity = float(fill_opacity)/100.0
-            draw.fill_width = fill_width
+            #draw.fill_width = fill_width
             draw.stroke_color = Color(stroke_color)
             draw.stroke_opacity = float(stroke_opacity)/100.0
             draw.stroke_width = stroke_width
-            # draw.text_under_color = Color('#00000030')
+            if text_under_color and text_under_color.lower() is not 'None':
+                draw.text_under_color = Color(text_under_color) #'#00000030'
 
             right_buf = 0
             # Add date taken
@@ -466,6 +468,9 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         if self.path.startswith("/history"):
             return self.do_history(params)
 
+        if self.path.startswith("/thumbnail"):
+            return self.do_thumbnail(params)
+
         # Connect to pictures database
         con = sqlite3.connect(DB_PATH)
         c = con.cursor()
@@ -476,7 +481,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             client = params['name'][0]
 
         c.execute(
-            'SELECT file_title, tag_filter, rating, datesize, titlesize, font, fill_opacity, fill_color, fill_width, stroke_opacity, stroke_color, stroke_width FROM config WHERE client=:client',
+            'SELECT file_title, tag_filter, rating, datesize, titlesize, font, fill_opacity, fill_color, text_under_color, stroke_opacity, stroke_color, stroke_width FROM config WHERE client=:client',
             {"client": client})
         row = c.fetchone()
         if not row:
@@ -493,12 +498,12 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         font = row[5]
         fill_opacity = row[6]
         fill_color = row[7]
-        fill_width = row[8]
+        text_under_color = row[8]
         stroke_opacity = row[9]
         stroke_color = row[10]
         stroke_width = row[11]
         print("{}/{}/{}/{}/{}/{}/{}/{}/{}/{}/{}/{}".format(file_title, tagfilter, stars, datesize, titlesize, font,
-                                                     fill_opacity, fill_color, fill_width, stroke_opacity, stroke_color,
+                                                     fill_opacity, fill_color, text_under_color, stroke_opacity, stroke_color,
                                                      stroke_width))
 
         # Get the list of matching pictures, just to find the minimum
@@ -570,7 +575,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 # Fit within box, maintain AR (aka 'fit'). add '>' to the end to avoid enlarging small pictures.
                 jpgimg.transform(resize="{:d}x{:d}".format(x, y))
 
-                self.draw_text(jpgimg, label, datesize, titlesize, font, fill_opacity, fill_color, fill_width,
+                self.draw_text(jpgimg, label, datesize, titlesize, font, fill_opacity, fill_color, text_under_color,
                                stroke_opacity, stroke_color, stroke_width)
 
                 # Place jpgimage in center of canvas
@@ -609,11 +614,32 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         if len(mydeque) == 0:
             historylist = "No history"
         else:
+            con = sqlite3.connect(DB_PATH)
+            c = con.cursor()
 
-            historylist = "<ol>"
+            historylist = "<div>\n"
+
+            query = 'SELECT path, title, GROUP_CONCAT(tags.tag) FROM pics ' + \
+                    'JOIN xtags ON pics.rowid = xtags.picid ' + \
+                    'JOIN tags ON xtags.tagid = tags.rowid ' + \
+                    'WHERE path in ({})'.format(','.join('?' * len(mydeque))) + \
+                    'GROUP BY path '
+
+            c.execute(query, tuple(mydeque))
+            rows = c.fetchall()
+            c.close()
+            con.close()
+
+            i = 0
             for item in mydeque:
-                historylist += "<li>" + item + "</li>\n"
-            historylist += "</ol>"
+                for row in rows:
+                    if row[0] == item:
+                        historylist += "<div style='float: left; margin: 5px; padding:0; border:solid 2px #888; width:200px;'><img src='/thumbnail?path={}' /><div style='padding: 5px;'><b>{}</b><br><i>{}</i><br><small>{}</small></div></div>\n".\
+                        format(row[0], row[1], row[2], row[0])
+                        i += 1
+                        break
+
+            historylist += "</div>\n"
 
         self.send_response(200, 'OK')
         self.send_header('Content-type', 'text/html')
@@ -621,3 +647,28 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
         page = "<html>{}</html>".format(historylist)
         self.wfile.write(page.encode('UTF-8'))
+
+    def do_thumbnail(self, params):
+        #TODO: Use rowid not path
+        with Image(filename=PIC_PATH + params['path'][0]) as jpgimg:
+
+            if "exif:Orientation" in jpgimg.metadata:
+                o = jpgimg.metadata['exif:Orientation']
+                print("ORIENTATION:", o)
+                if o == '3':
+                    jpgimg.rotate(180)
+                elif o == '6':
+                    jpgimg.rotate(90)
+                elif o == '8':
+                    jpgimg.rotate(270)
+
+            # Fit within box, maintain AR (aka 'fit'). add '>' to the end to avoid enlarging small pictures.
+            jpgimg.transform(resize="{:d}x{:d}".format(200, 300))
+
+            # Send HTTP response to feh (or browser)
+            self.send_response(200, 'OK')
+            self.send_header('Content-type', 'image/jpeg')
+            self.end_headers()
+
+            # Send final image to feh (or browser)
+            self.wfile.write(jpgimg.make_blob('jpeg'))

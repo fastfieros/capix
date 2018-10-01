@@ -66,7 +66,7 @@ def add_file(cur, basepath, filepath):
     if tags:
         add_tags(cur, tags, cur.lastrowid)
     else:
-        add_tags(cur, ['no_tag'], cur.lastrowid)
+        add_tags(cur, ['no tags'], cur.lastrowid)
 
     # print ("Added new pic {}".format(filepath))
 
@@ -140,8 +140,8 @@ def rebuild_db(db_path, basepath):
         cur.execute('CREATE INDEX idx_tags ON xtags(tagid,picid)')
 
         cur.execute(
-            'CREATE TABLE config (client text unique, file_title int, tag_filter text, rating text, datesize int, titlesize int, font text, fill_opacity int, fill_color text, fill_width int, stroke_opacity int, stroke_color text, stroke_width int)')
-        cmd = 'INSERT INTO config VALUES ("default", 1, "*", ">0", 60, 40, "PoiretOne-Regular.ttf", 90, "white", 5, 20, "black", 2)'
+            'CREATE TABLE config (client text unique, file_title int, tag_filter text, rating text, datesize int, titlesize int, font text, fill_opacity int, fill_color text, text_under_color int, stroke_opacity int, stroke_color text, stroke_width int)')
+        cmd = 'INSERT INTO config VALUES ("default", 1, "*", ">=0", 60, 40, "PoiretOne-Regular.ttf", 90, "white", "None", 20, "black", 2)'
         print(cmd)
         cur.execute(cmd)
         con.commit()
