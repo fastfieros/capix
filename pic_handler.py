@@ -412,7 +412,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 # Perform wrapping if needed
                 if metrics.text_width > max_width:
                     q = ceil(metrics.text_width / max_width)
-                    charsperline = int(len(title) / q)
+                    charsperline = int((2.0/3.0) * (len(title) / q))
                     cur_char = len(title)
                     while True:
                         next_char = cur_char - charsperline
@@ -575,11 +575,12 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 # Fit within box, maintain AR (aka 'fit'). add '>' to the end to avoid enlarging small pictures.
                 jpgimg.transform(resize="{:d}x{:d}".format(x, y))
 
-                self.draw_text(jpgimg, label, datesize, titlesize, font, fill_opacity, fill_color, text_under_color,
-                               stroke_opacity, stroke_color, stroke_width)
-
                 # Place jpgimage in center of canvas
                 img.composite(image=jpgimg, left=int((x - jpgimg.width) / 2), top=int((y - jpgimg.height) / 2))
+
+                # Draw text over jpgimg
+                self.draw_text(img, label, datesize, titlesize, font, fill_opacity, fill_color, text_under_color,
+                               stroke_opacity, stroke_color, stroke_width)
 
                 # Send HTTP response to feh (or browser)
                 self.send_response(200, 'OK')
@@ -632,6 +633,8 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
             i = 0
             for item in mydeque:
+                if i > 5:
+                    break
                 for row in rows:
                     if row[0] == item:
                         historylist += "<div style='float: left; margin: 5px; padding:0; border:solid 2px #888; width:200px;'><img src='/thumbnail?path={}' /><div style='padding: 5px;'><b>{}</b><br><i>{}</i><br><small>{}</small></div></div>\n".\
