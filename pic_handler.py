@@ -358,24 +358,20 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         return
 
     @staticmethod
-    def draw_text(jpgimg, title, datesize, titlesize, font,
+    def draw_text(jpgimg, dt, title, datesize, titlesize, font,
                   fill_opacity, fill_color, text_under_color, stroke_opacity,
-                  stroke_color, stroke_width):
+                  stroke_color, stroke_width, x, y):
 
         left = 0
-        right = jpgimg.width
+        right = x #jpgimg.width
         top = 0
-        bottom = jpgimg.height
+        bottom = y #jpgimg.height
 
         # Enable alpha channel
         jpgimg.alpha_channel = True
-        dt = None
 
         text = Image(width=right, height=bottom)
         text.alpha_channel = True
-
-        if "exif:DateTimeOriginal" in jpgimg.metadata:
-            dt = jpgimg.metadata['exif:DateTimeOriginal'].split(" ")[0].replace(":", "-")
 
         # Open draw api to write text onto canvas
         with Drawing() as draw:
@@ -396,6 +392,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 draw.font_size = datesize
                 dtp = datetime.strptime(dt, "%Y-%m-%d")
                 dts = dtp.strftime("%b '%y")
+                print(dts)
                 metrics = draw.get_font_metrics(text, dts, False)
                 right_buf = int(metrics.text_width) + 10
                 draw.text(right - right_buf, bottom - 10, dts)
@@ -562,6 +559,10 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             # Open canvas containing jpg pixels, for resizing.
             with Image(filename=PIC_PATH + path) as jpgimg:
 
+                dt = None
+                if "exif:DateTimeOriginal" in jpgimg.metadata:
+                    dt = jpgimg.metadata['exif:DateTimeOriginal'].split(" ")[0].replace(":", "-")
+
                 if "exif:Orientation" in jpgimg.metadata:
                     o = jpgimg.metadata['exif:Orientation']
                     print("ORIENTATION:", o)
@@ -579,8 +580,8 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 img.composite(image=jpgimg, left=int((x - jpgimg.width) / 2), top=int((y - jpgimg.height) / 2))
 
                 # Draw text over jpgimg
-                self.draw_text(img, label, datesize, titlesize, font, fill_opacity, fill_color, text_under_color,
-                               stroke_opacity, stroke_color, stroke_width)
+                self.draw_text(img, dt, label, datesize, titlesize, font, fill_opacity, fill_color, text_under_color,
+                               stroke_opacity, stroke_color, stroke_width, x, y)
 
                 # Send HTTP response to feh (or browser)
                 self.send_response(200, 'OK')
