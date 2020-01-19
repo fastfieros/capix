@@ -1,0 +1,73 @@
+<html>
+<head>
+<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+<meta content="utf-8" http-equiv="encoding">
+
+<style>
+body {
+    background: #000;
+}
+    img.bg {
+	
+  /* Set up proportionate scaling */
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  opacity: 0;
+}
+
+p.caption {
+    position:fixed;
+    bottom: 50px;
+    left: 100px;
+
+    text-shadow: 1px 1px 2px  #888;
+    font-size: 30px;
+    font-weight: bold;
+    -webkit-text-stroke: 1px #000;
+    color: #FFF;
+    opacity: 0;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+}
+
+</style>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script> 
+<script type="text/javascript">
+
+function getImage() {
+    \$("\#theimg").animate({'opacity':'0'}, 100, 'swing');
+    \$("\#thecaption").animate({'opacity':'0'}, 100, 'swing', function(){
+
+        \$("\#thecaption").css({"left":'100px'});
+
+        \$.getJSON("http://localhost:8000", function(data){
+            \$("\#theimg").attr('src','http://localhost:8000/image?pid='+data.rowid);
+            \$("\#theimg").animate({'opacity':'1'}, 1000, 'swing');
+
+            \$("\#thecaption").text(data.label);
+            \$("\#thecaption").animate({"left":'50px', 'opacity':'1'}, 1000, 'swing');
+            setTimeout(() => {
+                getImage();
+            }, ${timeout} );
+        });
+
+    });
+
+}
+
+\$(function(){
+    getImage();
+});
+</script>
+</head>
+
+<body>
+<img class="bg" id="theimg">
+<p class="caption" id="thecaption">...</p>
+</body>
+</html>

@@ -6,10 +6,12 @@ from math import ceil
 from os.path import basename, dirname, getmtime, realpath
 from threading import Thread, Semaphore
 from urllib.parse import urlparse, parse_qs
-from wand.color import Color
-from wand.drawing import Drawing
-from wand.image import Image
+import json
+#from wand.color import Color
+#from wand.drawing import Drawing
+#from wand.image import Image
 from collections import deque
+from Cheetah.Template import Template
 
 from pics import rebuild_thread
 
@@ -331,6 +333,45 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
         return
 
+    def do_main(self):
+        self.send_response(200, 'OK')
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+
+        with open("main.tmpl", 'r') as m:
+            template = m.read()
+            print (template)
+            t = Template(template)
+            t.timeout = "5000"
+            self.wfile.write(str(t).encode())
+
+
+    def do_image(self, params):
+        # Connect to pictures database
+        con = sqlite3.connect(DB_PATH)
+        c = con.cursor()
+        query = 'SELECT path FROM pics WHERE rowid = :pid'
+        c.execute(query, {"pid":params["pid"][0]})
+        row = c.fetchone()
+        if not row:
+            self.send_response(404, 'Not Found')
+            self.end_headers()
+            self.wfile.write(b"<html><h1>Error: No photo found.</h1></html>")
+            return
+
+        path = row[0]
+
+        # Send HTTP response to feh (or browser)
+        self.send_response(200, 'OK')
+        self.send_header('Content-type', 'image/jpeg')
+        self.end_headers()
+
+        # Send final image to feh (or browser)
+        print(f"PATH: {PIC_PATH+path}") 
+        with open(PIC_PATH+path, 'rb') as picfile:
+            self.wfile.write(picfile.read())
+
+
     def do_rebuild_db(self, params):
 
         msg = ""
@@ -357,84 +398,6 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
         return
 
-    @staticmethod
-    def draw_text(jpgimg, dt, title, datesize, titlesize, font,
-                  fill_opacity, fill_color, text_under_color, stroke_opacity,
-                  stroke_color, stroke_width, x, y):
-
-        left = 0
-        right = x #jpgimg.width
-        top = 0
-        bottom = y #jpgimg.height
-
-        # Enable alpha channel
-        jpgimg.alpha_channel = True
-
-        text = Image(width=right, height=bottom)
-        text.alpha_channel = True
-
-        # Open draw api to write text onto canvas
-        with Drawing() as draw:
-
-            draw.font = SCRIPT_PATH + "\\font\\" +  font
-            draw.fill_color = Color(fill_color)
-            draw.fill_opacity = float(fill_opacity)/100.0
-            #draw.fill_width = fill_width
-            draw.stroke_color = Color(stroke_color)
-            draw.stroke_opacity = float(stroke_opacity)/100.0
-            draw.stroke_width = stroke_width
-            if text_under_color and text_under_color.lower() is not 'None':
-                draw.text_under_color = Color(text_under_color) #'#00000030'
-
-            right_buf = 0
-            # Add date taken
-            if dt:
-                draw.font_size = datesize
-                dtp = datetime.strptime(dt, "%Y-%m-%d")
-                dts = dtp.strftime("%b '%y")
-                print(dts)
-                metrics = draw.get_font_metrics(text, dts, False)
-                right_buf = int(metrics.text_width) + 10
-                draw.text(right - right_buf, bottom - 10, dts)
-                right_buf += 10
-
-            # Add title if available
-            if title:
-                draw.font_size = titlesize
-                metrics = draw.get_font_metrics(text, title, False)
-                skip = metrics.text_height
-                cur_line = int(bottom - 10)
-                max_width = jpgimg.width - right_buf
-
-                # Perform wrapping if needed
-                if metrics.text_width > max_width:
-                    q = ceil(metrics.text_width / max_width)
-                    charsperline = int((2.0/3.0) * (len(title) / q))
-                    cur_char = len(title)
-                    while True:
-                        next_char = cur_char - charsperline
-                        if next_char < 0:
-                            next_char = 0
-                        else:
-                            # Find next backwards space
-                            while title[next_char] != ' ' and next_char > 0:
-                                next_char -= 1
-
-                        # print("{}->{}: {}".format(next_char, cur_char, label[next_char:cur_char]))
-                        draw.text(left + 10, cur_line, title[next_char:cur_char])
-                        cur_char = next_char
-                        cur_line -= int(skip)
-
-                        if 0 == next_char:
-                            break
-
-                else:
-                    draw.text(left + 10, cur_line, title)
-                    cur_line -= int(skip)
-
-            # Render text onto canvas image
-            draw(text)
-            jpgimg.composite(image=text, left=left, top=top)
 
     def do_GET(self):
         global HISTORY
@@ -467,6 +430,13 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
 
         if self.path.startswith("/thumbnail"):
             return self.do_thumbnail(params)
+
+        if self.path.startswith("/image"):
+            return self.do_image(params)
+
+        if self.path.startswith("/main"):
+            return self.do_main()
+
 
         # Connect to pictures database
         con = sqlite3.connect(DB_PATH)
@@ -517,6 +487,7 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
         # from pictures with the minimum views. (this keeps all pictures
         # in fair rotation). Then sort by random and get the first one.
         # row = self.get_row(c, tagfilter, stars, minviews)
+        output = {}
         row = self.get_row_true_random(c, tagfilter, stars)
         if not row:
             self.send_response(404, 'Not Found')
@@ -532,6 +503,12 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
             desc = row[4]
             print ("{}:{}, {} views ({})".format(rowid, path, views, title))
 
+            output = {'rowid':  row[0],
+                "path": row[1],
+                "views": int(row[2]) + 1,
+                "title":row[3],
+                "desc": row[4]}
+
             HISTORY[client].appendleft(path)
 
             # Now that we have chosen a picture, update its view count in db.
@@ -543,9 +520,9 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 (x, y) = params['r'][0].lower().split('x')
                 (x, y) = (int(x), int(y))
 
-            # Create base canvas (blank image of correct size)
-            img = Image(width=x, height=y, background=Color('black'))
-            img.alpha_channel = True
+            # #Create base canvas (blank image of correct size)
+            # img = Image(width=x, height=y, background=Color('black'))
+            # img.alpha_channel = True
 
             # Add label (Default label is filename, title if available)
             label = ""
@@ -556,40 +533,50 @@ class MyHandler(http.server.SimpleHTTPRequestHandler):
                 if label.startswith("/"):
                     label = label[1:]  # Remove leading /
 
-            # Open canvas containing jpg pixels, for resizing.
-            with Image(filename=PIC_PATH + path) as jpgimg:
+            output['label'] = label
 
-                dt = None
-                if "exif:DateTimeOriginal" in jpgimg.metadata:
-                    dt = jpgimg.metadata['exif:DateTimeOriginal'].split(" ")[0].replace(":", "-")
+            # # Open canvas containing jpg pixels, for resizing.
+            # with Image(filename=PIC_PATH + path) as jpgimg:
 
-                if "exif:Orientation" in jpgimg.metadata:
-                    o = jpgimg.metadata['exif:Orientation']
-                    print("ORIENTATION:", o)
-                    if o == '3':
-                        jpgimg.rotate(180)
-                    elif o == '6':
-                        jpgimg.rotate(90)
-                    elif o == '8':
-                        jpgimg.rotate(270)
+            #     dt = None
+            #     if "exif:DateTimeOriginal" in jpgimg.metadata:
+            #         dt = jpgimg.metadata['exif:DateTimeOriginal'].split(" ")[0].replace(":", "-")
 
-                # Fit within box, maintain AR (aka 'fit'). add '>' to the end to avoid enlarging small pictures.
-                jpgimg.transform(resize="{:d}x{:d}".format(x, y))
+            #     if "exif:Orientation" in jpgimg.metadata:
+            #         o = jpgimg.metadata['exif:Orientation']
+            #         print("ORIENTATION:", o)
+            #         if o == '3':
+            #             jpgimg.rotate(180)
+            #         elif o == '6':
+            #             jpgimg.rotate(90)
+            #         elif o == '8':
+            #             jpgimg.rotate(270)
 
-                # Place jpgimage in center of canvas
-                img.composite(image=jpgimg, left=int((x - jpgimg.width) / 2), top=int((y - jpgimg.height) / 2))
+            #     # Fit within box, maintain AR (aka 'fit'). add '>' to the end to avoid enlarging small pictures.
+            #     jpgimg.transform(resize="{:d}x{:d}".format(x, y))
 
-                # Draw text over jpgimg
-                self.draw_text(img, dt, label, datesize, titlesize, font, fill_opacity, fill_color, text_under_color,
-                               stroke_opacity, stroke_color, stroke_width, x, y)
+            #     # Place jpgimage in center of canvas
+            #     img.composite(image=jpgimg, left=int((x - jpgimg.width) / 2), top=int((y - jpgimg.height) / 2))
 
-                # Send HTTP response to feh (or browser)
-                self.send_response(200, 'OK')
-                self.send_header('Content-type', 'image/jpeg')
-                self.end_headers()
+            #     # Draw text over jpgimg
+            #     self.draw_text(img, dt, label, datesize, titlesize, font, fill_opacity, fill_color, text_under_color,
+            #                    stroke_opacity, stroke_color, stroke_width, x, y)
 
-                # Send final image to feh (or browser)
-                self.wfile.write(img.make_blob('jpeg'))
+            #     # Send HTTP response to feh (or browser)
+            #     self.send_response(200, 'OK')
+            #     self.send_header('Content-type', 'image/jpeg')
+            #     self.end_headers()
+
+            #     # Send final image to feh (or browser)
+            #     self.wfile.write(img.make_blob('jpeg'))
+
+        # Send HTTP response to feh (or browser)
+        self.send_response(200, 'OK')
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+
+        # Send final metadata to browser
+        self.wfile.write(json.dumps(output).encode())
 
         # cleanup
         c.close()
