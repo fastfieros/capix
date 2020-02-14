@@ -1,0 +1,176 @@
+{% extends "layout.j2" %}
+{% set active_page = "Filters" %}
+
+{% block content %}
+<main role="main" class="container">
+
+
+{% for filt in filters %}
+<form class="mb-3" action="/filters/update/{{ filt.id }}" method="POST">
+  <div class="card">
+
+    <div class="card-header">
+      <div class="row form-row">
+        <div class="col-md-10">
+          <h4>{{filt.name}}</h4> 
+        </div>
+        <div class="col-md-2 text-right">
+          <a href="/filters/remove/{{ filt.id }}" class=" btn btn-dark" data-toggle='tooltip' title="Delete Filter">
+            <i class="fas fa-trash-alt"></i>
+          </a>
+          <button type="submit" value="Submit" class="btn btn-success" data-toggle='tooltip' title="Save changes to this Filter"><i class="fas fa-check"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-body">
+
+      <div class="row form-row text-right">
+        <div class="col-md-5">
+          <input type="hidden" class="form-control" name="stars_bitfield" id="stars-{{filt.id}}" value="{{filt.stars_bitfield}}" data-toggle='tooltip' title="Filter based on the number of stars.">
+            <div class="form-check form-check-inline">
+              {% for i in range(6) %}
+              <div class="fa-3x mr-1 hoverstar" onclick="update_stars({{filt.id}}, {{i}});">
+                <span class="fa-layers fa-fw">
+                  <i class="fas fa-star"></i>
+                  <span class="fa-layers-text fa-inverse" data-fa-transform="shrink-6 down-1" style="font-weight:900">{{i}}</span>
+                  <i class="fas fa-check text-success" data-fa-transform="shrink-6 up-3 right-3" 
+                  {% if not i in stars_checked[filt.id] %}hidden{% endif %} id="stars-{{filt.id}}-{{i}}"></i>
+                </span>
+              </div>
+              {% endfor %}
+            </div>
+        </div>
+        <div class="col-md-5">
+          <div class="form-check form-check-inline">
+          From: 
+          <input type="date" class="form-control mr-3" name="date_min" value="{{filt.date_min.date().isoformat()}}" min="1970-01-01" max="9999-01-01">
+          To: 
+          <input type="date" class="form-control" name="date_max" value="{{filt.date_max.date().isoformat()}}" min="1970-01-01" max="9999-01-01">
+          </div>
+        </div>
+        <div class="col-md-2">
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="checkbox" name='filter-date' id="date-checkbox-{{filt.id}}" 
+                    {% if filt.enable_date %}checked{% endif %}  data-toggle='tooltip' title="Enable filtering by 'date taken' EXIF tag (This will exclude any photos that do not have this tag).">
+              <label class="form-check-label" for="date-checkbox-{{filt.id}}">Use Date Filter</label>
+            </div>
+            {#<div class="form-check form-check-inline">
+              <input class="form-check-input" type="checkbox" name='case-sensitive' id="case-checkbox-{{filt.id}}"
+                    {% if filt.case_sensitive %}checked{% endif %} data-toggle='tooltip' title="Enable case-sensitive tag filter.">
+              <label class="form-check-label" for="case-checkbox-{{filt.id}}">Case Sensitive</label>
+            </div>#}
+        </div>
+
+      </div> <!-- row -->
+</form>
+
+<form class="mb-3" action="/filters/addtag/{{ filt.id }}" method="POST">
+      <div class="row form-row">
+        <div class="col-md-1">
+        </div>
+        <div class="col-md-2">
+          <input type="text" name="tag" class="form-control typeahead" placeholder="add tag">
+        </div>
+        <div class="col-md-1">
+          <input type="submit" value="+" class="btn btn-primary" data-toggle='tooltip' title="Add the specified tag to this Filter">
+        </div>
+        <div class="col-md-7">
+          {% for tag in tag_lists[filt.id] %}
+            <a class="btn btn-primary mb-1" href="/filters/removetag/{{filt.id}}/{{loop.index0}}"
+               data-toggle='tooltip' title="Click on a tag to remove it" > 
+              {{tag|e}}
+              <i class="fas fa-trash-alt ml-1" data-fa-transform="shrink-1"></i>
+            </a>
+          {% endfor %}
+        </div>
+        <div class="col-md-1">
+          <p class='text-muted'>{{counts[filt.id]}} matches</p>
+        </div>
+      </div> <!-- row -->
+</form>
+
+    </div> <!-- card-body -->
+  </div> <!-- card -->
+{% else %}
+  <p> no filters. </p>
+{% endfor %}
+
+<form class="mb-3 mt-3" action="/filters/add" method="POST">
+  <div class="row form-row">
+    <div class="col-md-8">
+      <input type="text" class="form-control" name="name" placeholder="name">
+    </div>
+    <div class="col-md-4">
+      <button type="submit" value="add" class="btn btn-primary" data-toggle='tooltip' title="Create a new Filter with the specified <name>"><i class="fas fa-plus"></i></button>
+    </div>
+  </div>
+</form>
+
+</main><!-- /.container -->
+<script>
+{{js_taglist}}
+
+$(".hoverstar").hover(
+  function() {
+    $( this ).addClass( "text-muted" );
+  }, function() {
+    $( this ).removeClass( "text-muted" );
+  }
+);
+
+function update_stars(filt_id, star_count)
+{
+  var this_bitfield = 1 << star_count;
+  var hidden_input = $("#stars-"+filt_id);
+  var star_icon = $("#stars-"+filt_id+"-"+star_count);
+  var attr = star_icon.attr("hidden");
+  var hidden = typeof attr !== typeof undefined && attr !== false;
+  var prev_val = hidden_input.val();
+
+  if (hidden) {
+    // Append bit
+    star_icon.removeAttr("hidden");
+    hidden_input.val(prev_val | this_bitfield);
+  }
+  else {
+    // Remove bit
+    star_icon.attr("hidden", "hidden");
+    hidden_input.val(prev_val & (~this_bitfield));
+  }
+}
+
+var substringMatcher = function(strs) {
+  return function findMatches(q, cb) {
+    var matches, substringRegex;
+
+    // an array that will be populated with substring matches
+    matches = [];
+
+    // regex used to determine if a string contains the substring `q`
+    substrRegex = new RegExp(q, 'i');
+
+    // iterate through the pool of strings and for any string that
+    // contains the substring `q`, add it to the `matches` array
+    $.each(strs, function(i, str) {
+      if (substrRegex.test(str)) {
+        matches.push(str);
+      }
+    });
+
+    cb(matches);
+  };
+};
+
+$('.typeahead').typeahead({
+  highlight: true,
+  hint: true,
+  minLength: 1
+},
+{
+  name: 'tags',
+  source: substringMatcher(realtags)
+});
+
+</script>
+{% endblock %}

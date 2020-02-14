@@ -1,9 +1,15 @@
 # capix
 
-You will need to create a file `config.py` with the following paths
-```python
-#Path holding pictures you want to serve
-PIC_PATH = "C:\\users\\user\\pictures"
-# Path to existing picture database (new database will be created if it doesn't exist).
-DB_PATH = "C:\\users\\user\\pictures\\capix.db"
+Update default_cfg.json with Path holding pictures you want to serve
+
+```bash
+FLASK_APP=capix python -m flask run --host=0.0.0.0
 ```
+
+pip dependencies:
+flask
+flask-admin
+flask-sqlalchemy
+jinja2
+fs
+Pillow

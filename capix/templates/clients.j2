@@ -1,0 +1,94 @@
+{% extends "layout.j2" %}
+{% set active_page = "Clients" %}
+
+{% block content %}
+<main role="main" class="container">
+
+
+{% for client in clients %}
+  <div class="card mb-3">
+
+    <div class="card-header">
+      <div class="row form-row">
+        <div class="col-md-10">
+          <h4>{{client.name}}</h4> 
+        </div>
+        <div class="col-md-2 text-right">
+          <a href="/clients/remove/{{ client.id }}" class="btn btn-dark" data-toggle='tooltip' title="Delete Client">
+            <i class="fas fa-trash-alt"></i>
+          </a>
+          <button type="submit" form="form-update-{{ client.id }}" value="Submit" class="btn btn-success" data-toggle='tooltip' title="Save changes to this client"><i class="fas fa-check"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <form class="mb-3" id="form-update-{{ client.id }}" action="/clients/update/{{ client.id }}" method="POST">
+        <div class="row form-row">
+
+          <div class="col-md-1">
+            <input type="text" class="form-control" name="shortname" placeholder="id" value="{{client.shortname}}" data-toggle='tooltip' title="Identifier used by client to request pictures (Short but unique).">
+          </div>
+
+          <div class="col-md-3">
+            <select class="custom-select mr-sm-2" name='filter_id' data-toggle='tooltip' title="Choose which filter is applied to this client">
+            {% for filt in filters %}
+              <option value={{filt.id}} {% if client.filter_id == filt.id %}selected{% endif %}>{{filt.name}}</option>
+            {% else %}
+              <option selected> no filters. </option>
+            {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-2">
+            <select class="custom-select mr-sm-2" name='style_id' data-toggle='tooltip' title="Choose which style is applied to this client">
+            {% for style in styles %}
+              <option value={{style.id}} {% if client.style_id == style.id %}selected{% endif %}>{{style.name}}</option>
+            {% else %}
+              <option selected> no styles. </option>
+            {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-1">
+            <input type="text" class="form-control" name="display_seconds" placeholder="seconds" value="{{client.display_seconds}}" data-toggle='tooltip' title="Time (in seconds) to wait before requesting the next picture.">
+          </div>
+
+          <div class="col-md-3">
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" name='anim-cap' id="animc-checkbox-{{client.id}}" 
+                      {% if client.animate_captions %}checked{% endif %}  data-toggle='tooltip' title="Enable caption fade in animation.">
+                <label class="form-check-label" for="animc-checkbox-{{client.id}}">Animate Captions</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" name='anim-photo' id="animp-checkbox-{{client.id}}"
+                      {% if client.animate_photos %}checked{% endif %} data-toggle='tooltip' title="Enable transition between photos.">
+                <label class="form-check-label" for="animp-checkbox-{{client.id}}">Cross-Fade pictures</label>
+              </div>
+          </div>
+
+        </div> <!-- row -->
+      </form>
+    </div> <!-- card-body -->
+
+  </div> <!-- card -->
+{% else %}
+  <p> no clients. </p>
+{% endfor %}
+
+<form class="mb-3 mt-3" action="/clients/add" method="POST">
+  <div class="row form-row">
+    <div class="col-md-1">
+      <input type="text" class="form-control" name="shortname" placeholder="id">
+    </div>
+    <div class="col-md-7">
+      <input type="text" class="form-control" name="name" placeholder="name">
+    </div>
+    <div class="col-md-4">
+      <button type="submit" value="add" class="btn btn-primary" data-toggle='tooltip' title="Create a new client with the specified <id> and <name>"><i class="fas fa-plus"></i></button>
+    </div>
+  </div>
+</form>
+
+</main><!-- /.container -->
+{% endblock %}

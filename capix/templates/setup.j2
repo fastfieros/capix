@@ -1,0 +1,68 @@
+{% extends "layout.j2" %}
+{% set active_page = "hello" %}
+
+{% block content %}
+<main role="main" class="container">
+
+  <div class="starter-template">
+    <h1>Current Database status:</h1>
+    <pre class="lead">{{path}}</pre>
+
+    {% if status.rebuilding %}
+      <h4 class="text-info">
+        <div class="fa-3x">
+          <i class="fas fa-cog fa-spin"></i>
+          Rebuilding database now
+        </div>
+      </h4>
+      <p class="light" id="pstat"></p>
+    {% else %}
+      <p class="light">last database rebuild at {{status.start}} took {{status.delta}} seconds.</p>
+      <p class="light">database currently takes about {{status.dbsize / 1000}}MB on disk.</p>
+
+      <form action="start_rebuild" method="post" class="mt-2">
+        <button type="submit" class="btn btn-danger" data-toggle='tooltip' 
+          title="Pressing this button will clear the photo database and rebuild it.">
+          <i class="fas fa-biohazard"></i>
+          Delete and Rebuild Database Now
+          <i class="fas fa-exclamation"></i>
+        </button>
+      </form>
+    {% endif %}
+  </div>
+
+</main><!-- /.container -->
+
+<script type="text/javascript">
+
+function getStatus() 
+{
+  $.getJSON("/setup/dbstatus", function(sjson)
+  {
+    console.log(sjson);
+    var dbmb = sjson.dbsize / 1000;
+    if (sjson.rebuilding)
+    {
+      {% if not status.rebuilding %} 
+        location.reload();
+      {% else %}
+        $("#pstat").text(`${sjson.done}/${sjson.count} (${sjson.delta}s, ${dbmb}MB)` );
+        setTimeout(getStatus, 500);
+      {% endif %}
+    }
+    else /* status != rebuilding */
+    {
+      {% if status.rebuilding %} 
+        location.reload(); 
+      {% else %}
+        $("#pstat").text(`${sjson.done} pictures. Database is ${dbmb}MB` );
+        setTimeout(getStatus, 5000);
+      {% endif %}
+    }
+  });
+}
+
+getStatus();
+
+</script>
+{% endblock %}

@@ -1,0 +1,32 @@
+<nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+  <span class="navbar-brand">
+    <p class="fas fa-image" data-fa-transform="shrink-4 down-1"></p>
+      capix
+    <p class="fas fa-comment" data-fa-transform="shrink-4 up-6"></p>
+  </span>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon">HAM</span>
+  </button>
+
+{% set navigation_bar = 
+[
+  ('/clients', 'tv', 'Clients'), 
+  ('/filters', 'filter', 'Filters'),
+  ('/styles', 'palette', 'Styles'),
+  ('/setup/status', 'info-circle', 'Status'),
+] 
+-%}
+{% set active_page = active_page|default('clients') -%}
+
+  <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+    <ul class="navbar-nav mr-auto">
+
+{% for href, icon, caption in navigation_bar %}
+      <li class="nav-item {% if caption == active_page %}active{% endif %}">
+        <a class="nav-link" href="{{ href|e }}"><i class="fas fa-{{ icon|e }} mr-1"></i>{{ caption|e }}</a>
+      </li>
+{% endfor %}
+
+    </ul>
+  </div>
+</nav>

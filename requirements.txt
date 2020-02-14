@@ -1,0 +1,6 @@
+flask
+flask-admin
+flask-sqlalchemy
+jinja2
+fs
+Pillow

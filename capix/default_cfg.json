@@ -1,0 +1,4 @@
+{
+    "basepath": "test",
+    "worker_processes": 4
+}

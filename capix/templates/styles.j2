@@ -1,0 +1,67 @@
+{% extends "layout.j2" %}
+{% set active_page = "Styles" %}
+
+{% block content %}
+<main role="main" class="container">
+
+
+{% for s in styles %}
+<form class="mb-3" action="/styles/update/{{ s.id }}" method="POST">
+  <div class="card">
+
+    <div class="card-header">
+      <div class="row form-row">
+        <div class="col-md-10">
+          <h4>{{s.name}}</h4> 
+        </div>
+        <div class="col-md-2 text-right">
+          <a href="/styles/remove/{{ s.id }}" class=" btn btn-dark" data-toggle='tooltip' title="Delete Style">
+            <i class="fas fa-trash-alt"></i>
+          </a>
+          <button type="submit" value="Submit" class="btn btn-success" data-toggle='tooltip' title="Save changes to this Style"><i class="fas fa-check"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="row form-row">
+
+        <div class="col-md-8">
+          <div class="form-group">
+            <label for="css-{{s.id}}">Caption CSS Code</label>
+            <pre>
+              <textarea class="form-control" name="css" id="css-{{s.id}}" rows="12">{% if s.caption_css %}{{s.caption_css|e}}{% endif %}</textarea>
+            </pre>
+          </div>
+        </div>
+
+        <div class="col-md-4 p-3 align-bottom">
+          <label>Test area (2:1 scale)</label>
+          <div style="zoom:50%; width: 90%; height: 90%; background-image: url('/static/test.jpg'); ">
+            <p style="{{s.caption_css}};">This is a test caption</p>
+          </div>
+        </div>
+
+        </div> <!-- row -->
+
+    </div> <!-- card-body -->
+
+  </div> <!-- card -->
+</form>
+{% else %}
+  <p> no styles. </p>
+{% endfor %}
+
+<form class="mb-3 mt-3" action="/styles/add" method="POST">
+  <div class="row form-row">
+    <div class="col-sm-4 col-md-8">
+      <input type="text" class="form-control" name="name" placeholder="name">
+    </div>
+    <div class="col-sm-6 col-md-4">
+      <button type="submit" value="add" class="btn btn-primary" data-toggle='tooltip' title="Create a new Style with the specified <name>"><i class="fas fa-plus"></i></button>
+    </div>
+  </div>
+</form>
+
+</main><!-- /.container -->
+{% endblock %}

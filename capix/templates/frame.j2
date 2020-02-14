@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>capix frame</title>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <style>
+  body {
+    background: #000;
+  }
+  img.bg {
+    /* Set up proportionate scaling */
+    height: 100%;
+    width: 100%;
+    object-fit: contain;
+  
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    opacity: 0;
+  }
+  .caption {
+      opacity: 0;
+  {{ frame_style }}
+  }
+  </style>
+
+  <script src="/static/js/jquery-3.4.1.min.js"></script>
+  <script src="/static/js/all.min.js"></script>
+  <script type="text/javascript">
+
+function getStatus() 
+{
+    $.getJSON("{{shortname}}/status.json", function(data){
+        setTimeout(() => {
+            getStatus();
+        }, {{ status_timeout }} );
+    });
+}
+
+function getImage() 
+{
+    $("#theimg").animate({'opacity':'0'}, 100, 'swing');
+    $("#thecaption").animate({'opacity':'0'}, 100, 'swing', function()
+    {
+        //reset caption state 
+        $("#thecaption").css({"left":'100px'});
+
+        $.getJSON("{{shortname}}/next.json", function(picdata)
+        {
+            console.log(picdata);
+            $("#thecaption").text(picdata.title + " " + picdata.description);
+            $("#theimg").attr('src','picture/'+picdata.id+'.jpg?w='+$(window).width()+'&h='+$(window).height());
+        });
+
+    });
+}
+
+function imageLoaded() 
+{
+    $("#theimg").animate({'opacity':'1'}, 1000, 'swing');
+
+    $("#thecaption").animate({"left":'50px', 'opacity':'1'}, 1000, 'swing');
+    setTimeout(() => {
+        getImage();
+    }, {{ picture_timeout }} );
+}
+
+function imageErrored() 
+{
+    $("#thecaption").text("Error loading image.");
+    setTimeout(() => {
+        getImage();
+    }, {{ picture_timeout }} );
+}
+
+$(function()
+{
+    $("#theimg").on('load', imageLoaded);
+    $("#theimg").on('error', imageErrored);
+
+    $("#thecaption").css({"opacity":'0'});
+
+    //getStatus();
+    getImage();
+});
+  </script>
+</head>
+
+<body>
+<img class="bg" id="theimg">
+<p class="caption" id="thecaption">...</p>
+</body>
+
+</html>
