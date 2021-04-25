@@ -1,6 +1,5 @@
 
 *.db
-config.py
 *.pyc
 venv/Scripts/_asyncio.pyd
 venv/Scripts/_bz2.pyd
