@@ -57,8 +57,8 @@ def get_status_info():
     return {
         "count":count,
         "done":done, 
-        "end":end_time and end_time.strftime("%H:%M %Y/%m%/%d") or None, 
-        "start":start_time and start_time.strftime("%H:%M %Y/%m%/%d") or None, 
+        "end":end_time and end_time.strftime("%H:%M %Y/%m/%d") or None, 
+        "start":start_time and start_time.strftime("%H:%M %Y/%m/%d") or None, 
         "delta":delta,
         "rebuilding":rebuilding,
         "dbsize":dbsize
